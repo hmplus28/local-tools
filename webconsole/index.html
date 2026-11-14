@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LocalTools — کنسول مدیریت شبکه</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+</head>
+<body>
+<div class="bg-canvas"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+<div class="noise"></div>
+
+<div class="app">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">🛠️</div>
+      <div>
+        <h1>کنسول مدیریت LocalTools</h1>
+        <div class="sub">ارسال فایل · اشتراک صفحه · کنترل از راه دور — تماماً داخل شبکه محلی</div>
+      </div>
+    </div>
+    <div class="conn-pill"><span class="conn-dot connecting" id="connDot"></span><span id="connText">در حال اتصال…</span></div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card"><span class="stat-icon">💻</span><div><div class="stat-num" id="statTotal">0</div><div class="stat-label">کل کلاینت‌ها</div></div></div>
+    <div class="stat-card"><span class="stat-icon">🟢</span><div><div class="stat-num" id="statOnline">0</div><div class="stat-label">آنلاین</div></div></div>
+    <div class="stat-card"><span class="stat-icon">🖥️</span><div><div class="stat-num" id="statSharing">0</div><div class="stat-label">جلسات اشتراک فعال</div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrapper">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" class="search-input" placeholder="جستجوی کلاینت (نام، کاربر، IP)…">
+    </div>
+    <button class="filter-btn active" data-filter="all">همه</button>
+    <button class="filter-btn" data-filter="online">آنلاین</button>
+    <button class="filter-btn" data-filter="offline">آفلاین</button>
+  </div>
+
+  <div class="clients-grid" id="clientsGrid">
+    <div class="empty-state">
+      <div class="empty-icon">📡</div>
+      <div class="empty-title">در انتظار کلاینت‌ها…</div>
+      <div class="empty-sub">ایجنت را روی ویندوز/لینوکس کلاینت‌ها اجرا کنید تا اینجا ظاهر شوند</div>
+    </div>
+  </div>
+</div>
+
+<!-- Drop overlay -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-box">📥 فایل را روی کارت کلاینت مقصد رها کنید<div class="hint">برای هر کلاینت، فایل بعد از تایید خود او ارسال می‌شود</div></div>
+</div>
+
+<!-- Send files modal -->
+<div class="modal-backdrop" id="sendModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="sendTitle">ارسال فایل</h3><button class="modal-close" data-close="sendModal">✕</button></div>
+    <div class="modal-body">
+      <div class="dropzone" id="sendDropzone">
+        <div class="dz-icon">🗂️</div>
+        <div class="dz-text">فایل‌ها را اینجا <b>بکشید و رها کنید</b> یا کلیک کنید</div>
+        <input type="file" id="sendInput" multiple>
+      </div>
+      <ul class="queue-list" id="sendQueue"></ul>
+      <div style="font-size:12px;color:var(--text-dim)">⚠ ارسال بدون تایید پاپ‌آپ روی کلاینت شروع نمی‌شود.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn primary" id="sendBtn">📤 ارسال (نیازمند تایید)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen viewer modal -->
+<div class="modal-backdrop" id="viewerModal">
+  <div class="modal viewer-modal">
+    <div class="viewer-toolbar">
+      <span class="vt-badge wait" id="viewerBadge">در انتظار تایید…</span>
+      <span class="vt-info" id="viewerTargetInfo"></span>
+      <span class="vt-spacer"></span>
+      <select class="quality-select" id="qualitySelect" title="کیفیت تصویر">
+        <option value="low">کم</option>
+        <option value="medium" selected>متوسط</option>
+        <option value="high">زیاد</option>
+      </select>
+      <button class="btn primary" id="requestControlBtn" style="padding:8px 14px">⌨️ درخواست کنترل</button>
+      <button class="btn ghost" id="releaseControlBtn" style="padding:8px 14px;display:none">🔓 رها کردن کنترل</button>
+      <button class="btn ghost" id="fullscreenBtn" style="padding:8px 14px">⛶ تمام‌صفحه</button>
+      <button class="btn danger" id="stopViewBtn" style="padding:8px 14px">⏹ پایان</button>
+    </div>
+    <div class="viewer-canvas-wrap" id="viewerWrap">
+      <canvas id="viewerCanvas" width="1280" height="720" tabindex="0"></canvas>
+      <div id="cursorDot"></div>
+    </div>
+    <div class="viewer-hint" id="viewerHint">مرحله ۱: فقط مشاهده — برای کنترل موس و کیبورد، «درخواست کنترل» را بزنید (نیازمند تایید کاربر کلاینت).</div>
+  </div>
+</div>
+
+<!-- Share my screen modal -->
+<div class="modal-backdrop" id="shareModal">
+  <div class="modal">
+    <div class="modal-head"><h3>📺 اشتراک صفحه من</h3><button class="modal-close" data-close="shareModal">✕</button></div>
+    <div class="modal-body">
+      <div class="share-status" id="shareStatus"><span class="spinner"></span><span>در انتظار تایید کلاینت…</span></div>
+      <video class="share-preview" id="sharePreview" autoplay muted playsinline></video>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:10px">
+        صفحه انتخابی مرورگر برای کلاینت نمایش داده می‌شود (فقط مشاهده). در مرورگر، صفحه/پنجره موردنظر را انتخاب کنید.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="stopShareBtn">⏹ توقف اشتراک</button>
+    </div>
+  </div>
+</div>
+
+<div class="incoming-panel" id="incomingPanel"></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

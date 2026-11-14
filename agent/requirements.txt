@@ -1,0 +1,4 @@
+websockets>=11
+mss>=9
+Pillow>=10
+pynput>=1.7

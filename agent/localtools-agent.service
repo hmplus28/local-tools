@@ -1,0 +1,15 @@
+[Unit]
+Description=LocalTools Agent — client service (X11 session required)
+After=graphical-session.target
+
+[Service]
+Type=simple
+# مسیرها و نشانی سرور را مطابق شبکه خودتان تغییر دهید
+WorkingDirectory=%h/local-tools/agent
+ExecStart=/usr/bin/python3 %h/local-tools/agent/agent.py --server ws://SERVER_IP:8788/ws --code CHANGE_ME
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=graphical-session.target

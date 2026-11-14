@@ -1,0 +1,15 @@
+[Unit]
+Description=LocalTools Hub — central LAN server (file transfer + screen share)
+After=network-online.target
+
+[Service]
+Type=simple
+# مسیرها را مطابق سرور خودتان تغییر دهید
+WorkingDirectory=/opt/local-tools/server
+ExecStart=/usr/bin/python3 /opt/local-tools/server/server.py --port 8788 --code CHANGE_ME --ssl
+Restart=always
+RestartSec=3
+User=localtools
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# اجرا و تست
+tests/_tmp/
+tests/_tmp_real/
+agent.json
+certs/
+*.log
+
+# سیستم
+.DS_Store
+Thumbs.db
