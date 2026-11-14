@@ -660,6 +660,14 @@ def make_hub_routes(hub: Hub, webconsole_dir: str):
                 return web.Response(text=f.read(), content_type="text/html", charset="utf-8")
         return web.Response(status=404, text="webconsole/index.html not found")
 
+    async def favicon_handler(request):
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+               '<rect width="64" height="64" rx="14" fill="#1f6feb"/>'
+               '<text x="32" y="43" font-size="34" text-anchor="middle" fill="#fff">\U0001f6e0</text>'
+               '</svg>')
+        return web.Response(body=svg.encode("utf-8"), content_type="image/svg+xml",
+                            headers={"Cache-Control": "public, max-age=86400"})
+
     async def login_handler(request):
         if hub.access_code is None:
             raise web.HTTPFound("/")
@@ -787,6 +795,7 @@ def make_hub_routes(hub: Hub, webconsole_dir: str):
     routes.post("/login_auth")(login_handler)
     routes.get("/health")(health_handler)
     routes.get("/ws")(ws_handler)
+    routes.get("/favicon.ico")(favicon_handler)
     return routes
 
 
@@ -867,8 +876,21 @@ def main():
         print("    برای LAN از --ssl استفاده کنید")
     print("=" * 62)
 
-    web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_ctx,
-                print=lambda *a, **k: None)
+    try:
+        web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_ctx,
+                    print=lambda *a, **k: None)
+    except OSError as e:
+        if getattr(e, "errno", None) in (98, 48) or "10048" in str(e) or "in use" in str(e):
+            print("=" * 62, file=sys.stderr)
+            print(f"  ✗ پورت {args.port} اشغال است — به‌احتمال زیاد نمونه قبلی سرور هنوز در حال اجراست.", file=sys.stderr)
+            print("    توجه: Ctrl+Z سرور را فقط «معلق» می‌کند و پورت را آزاد نمی‌کند؛", file=sys.stderr)
+            print("    برای توقف همیشه از Ctrl+C استفاده کنید.", file=sys.stderr)
+            print(f"    Linux/macOS : pkill -f server.py   (بررسی: ss -tlnp | grep {args.port})", file=sys.stderr)
+            print(f"    Windows     : netstat -ano | findstr :{args.port}   سپس   taskkill /PID <شماره> /F", file=sys.stderr)
+            print("=" * 62, file=sys.stderr)
+        else:
+            print(f"[!] خطای شبکه هنگام راه‌اندازی سرور: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
