@@ -883,9 +883,9 @@ def main():
         if getattr(e, "errno", None) in (98, 48) or "10048" in str(e) or "in use" in str(e):
             print("=" * 62, file=sys.stderr)
             print(f"  ✗ پورت {args.port} اشغال است — به‌احتمال زیاد نمونه قبلی سرور هنوز در حال اجراست.", file=sys.stderr)
-            print("    توجه: Ctrl+Z سرور را فقط «معلق» می‌کند و پورت را آزاد نمی‌کند؛", file=sys.stderr)
-            print("    برای توقف همیشه از Ctrl+C استفاده کنید.", file=sys.stderr)
-            print(f"    Linux/macOS : pkill -f server.py   (بررسی: ss -tlnp | grep {args.port})", file=sys.stderr)
+            print("    توجه: Ctrl+Z سرور را فقط «معلق» می‌کند؛ فرآیند معلق به SIGTERM گوش نمی‌دهد", file=sys.stderr)
+            print("    و فقط با kill -9 بسته می‌شود. برای توقف عادی همیشه از Ctrl+C استفاده کنید.", file=sys.stderr)
+            print(f"    Linux/macOS : pkill -9 -f server.py   (بررسی: ss -tlnp | grep {args.port})", file=sys.stderr)
             print(f"    Windows     : netstat -ano | findstr :{args.port}   سپس   taskkill /PID <شماره> /F", file=sys.stderr)
             print("=" * 62, file=sys.stderr)
         else:
