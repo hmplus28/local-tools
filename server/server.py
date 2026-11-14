@@ -61,15 +61,38 @@ def build_binary(btype: int, stream_id: int, meta: dict, payload: bytes = b"") -
     return bytes([btype]) + stream_id.to_bytes(4, "big") + len(m).to_bytes(4, "big") + m + payload
 
 
-def lan_ip() -> str:
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
+def lan_ips() -> list:
+    """همه IPهای LAN — مرتب: IPهای شبکه اول، بریج‌های داکر/LXC (172.16-31) آخر."""
+    ips: list = []
+    try:  # همه اینترفیس‌ها به ترتیب NIC
+        out = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=2)
+        for ip in out.stdout.split():
+            if ip and not ip.startswith("127.") and ip not in ips:
+                ips.append(ip)
     except Exception:
-        return "127.0.0.1"
+        pass
+    try:  # IP مسیر پیش‌فرض (اگر از قبل نبود)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(("8.8.8.8", 80))
+        udp_ip = s.getsockname()[0]
+        s.close()
+        if udp_ip and not udp_ip.startswith("127.") and udp_ip not in ips:
+            ips.append(udp_ip)
+    except Exception:
+        pass
+
+    def _bridge_like(ip: str) -> int:
+        p = ip.split(".")
+        return 1 if (len(p) == 4 and p[0] == "172" and p[1].isdigit() and 16 <= int(p[1]) <= 31) else 0
+
+    ips.sort(key=_bridge_like)  # sort پایدار است — ترتیب نسبی داخل هر گروه حفظ می‌شود
+    return ips or ["127.0.0.1"]
+
+
+def lan_ip() -> str:
+    """IP اصلی (سازگاری با کدهای قبلی) — اولین IP از lan_ips()"""
+    return lan_ips()[0]
 
 
 # ---------------------------------------------------------------------------
@@ -815,6 +838,8 @@ def auto_selfsigned_cert(certfile, keyfile):
 def main():
     ap = argparse.ArgumentParser(description="LocalTools Hub Server")
     ap.add_argument("--host", default="0.0.0.0")
+    ap.add_argument("--ip", default=None,
+                    help="IP تبلیغ‌شده در بنر — وقتی سرور چند اینترفیس دارد (داکر/VPN/چند NIC)")
     ap.add_argument("--port", type=int, default=8788)
     ap.add_argument("--code", default=None, help="کد دسترسی (PIN) — اگر خالی باشد کنسول بدون رمز باز می‌شود")
     ap.add_argument("--ssl", action="store_true", help="فعال‌سازی HTTPS (برای اشتراک صفحه از مرورگر روی LAN لازم است)")
@@ -858,13 +883,19 @@ def main():
         ssl_ctx.load_cert_chain(cert, key)
         scheme = "https"
 
-    ip = lan_ip()
+    all_ips = lan_ips()
+    ip = args.ip or all_ips[0]
+    others = [i for i in all_ips if i != ip]
     print("=" * 62)
     print("  LocalTools Hub — سرور مرکزی ابزار شرکت")
     print(f"  نسخه: {VERSION}")
     print(f"  نشانی کنسول وب : {scheme}://{ip}:{args.port}/")
     print(f"  نشانی محلی     : {scheme}://127.0.0.1:{args.port}/")
     print(f"  نشانی ایجنت‌ها : {scheme}://{ip}:{args.port}/ws?role=agent" + (f"&code={args.code}" if args.code else ""))
+    if others:
+        print("  سایر نشانی‌ها   : " + "  |  ".join(others))
+        print("    ⚠ سرور چند IP دارد (داکر/VPN/چند کارت شبکه) — اگر از سیستم دیگر باز نشد،")
+        print("      IP شبکه شرکت را از بالا انتخاب کنید یا با --ip ثابتش کنید")
     if args.code:
         print(f"  کد دسترسی کنسول: {args.code}")
     else:

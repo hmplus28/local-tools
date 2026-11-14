@@ -96,6 +96,8 @@ elif command -v ip >/dev/null 2>&1; then
   IPS=$(ip -4 -o addr show scope global 2>/dev/null | awk '{split($4,a,"/"); print a[1]}')
 fi
 if [ -n "$IPS" ]; then
+  # بریج‌های داکر/LXC (172.16-31) را ته لیست ببر — IP شبکه معمولاً 192.168.x یا 10.x است
+  IPS=$(echo "$IPS" | awk -F. '{br=($1=="172" && $2+0>=16 && $2+0<=31)?1:0; print br"\t"$0}' | sort -s -k1,1 | cut -f2)
   for ip in $IPS; do echo "  • $ip"; done
   FIRST=$(echo "$IPS" | head -1)
   ok "از سیستم دیگر این را باز کنید:  https://$FIRST:$PORT/"
